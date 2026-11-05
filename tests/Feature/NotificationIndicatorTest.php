@@ -33,7 +33,7 @@ class NotificationIndicatorTest extends TestCase
             ->assertSeeHtml('class="notification-badge"');
     }
 
-    public function test_marking_inbox_read_clears_markers_and_leaves_other_members_notifications_unread(): void
+    public function test_opening_inbox_clears_markers_and_leaves_other_members_notifications_unread(): void
     {
         $user = User::factory()->create();
         $other = User::factory()->create();
@@ -41,7 +41,7 @@ class NotificationIndicatorTest extends TestCase
         $this->notify($other);
 
         $indicator = Livewire::actingAs($user)->test(NotificationLink::class)->assertSee('1 unread notification');
-        Livewire::test(Inbox::class)->call('markRead')->assertDispatched('notifications-updated');
+        Livewire::test(Inbox::class)->assertDispatched('notifications-updated');
 
         $indicator->dispatch('notifications-updated')
             ->assertSee('no unread notifications')
@@ -49,6 +49,31 @@ class NotificationIndicatorTest extends TestCase
 
         $this->assertSame(0, $user->unreadNotifications()->count());
         $this->assertSame(1, $other->unreadNotifications()->count());
+    }
+
+    public function test_opening_inbox_page_shows_read_notifications_and_cleared_navigation_badges(): void
+    {
+        $user = User::factory()->create();
+        $this->notify($user);
+        $this->actingAs($user)->get('/inbox')->assertOk()->assertSee('Shower reserved')
+            ->assertDontSee('Mark all as read')->assertDontSee('aria-label="Unread"', false)
+            ->assertDontSee('class="notification-badge"', false);
+        $this->assertSame(0, $user->unreadNotifications()->count());
+    }
+
+    public function test_visible_inbox_updates_mark_new_arrivals_read_without_changing_previous_read_times(): void
+    {
+        $user = User::factory()->create();
+        $this->notify($user);
+        $inbox = Livewire::actingAs($user)->test(Inbox::class);
+        $previous = $user->notifications()->sole();
+        $readAt = $previous->read_at->toIso8601String();
+        $this->travel(20)->seconds();
+        $this->notify($user);
+        $this->assertSame(1, $user->unreadNotifications()->count());
+        $inbox->call('markRead')->assertDispatched('notifications-updated');
+        $this->assertSame(0, $user->unreadNotifications()->count());
+        $this->assertSame($readAt, $previous->fresh()->read_at->toIso8601String());
     }
 
     public function test_inbox_navigation_stays_active_when_its_count_refreshes(): void
