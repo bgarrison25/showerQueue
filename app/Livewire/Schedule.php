@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\HouseholdSetting;
 use App\Models\Reservation;
+use App\Models\SwapRequest;
 use App\Models\User;
 use App\Services\AttendanceService;
 use App\Services\BookingService;
@@ -12,6 +13,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class Schedule extends Component
@@ -25,6 +27,7 @@ class Schedule extends Component
     public bool $showPast = false;
     public bool $expandedSlots = false;
     public string $notice = '';
+    #[Locked] public ?int $swapTargetId = null;
 
     public function mount(): void { $this->ownerId = auth()->id(); $this->normalizeDay(); }
 
@@ -46,7 +49,7 @@ class Schedule extends Component
 
     private function perform(callable $action, string $message): void
     {
-        $this->resetErrorBag(); $this->notice = '';
+        $this->resetErrorBag(); $this->notice = ''; $this->swapTargetId = null;
         try { $action(); $this->notice = $message; $this->dispatch('notifications-updated'); }
         catch (ValidationException $e) { $this->addError('booking', collect($e->errors())->flatten()->first()); }
         catch (QueryException $e) {
@@ -73,7 +76,11 @@ class Schedule extends Component
     public function cancel(int $id): void { $this->perform(fn () => app(BookingService::class)->cancel(auth()->user(), $id), 'Reservation cancelled. That time is available again.'); }
     public function start(int $id): void { $this->perform(fn () => app(BookingService::class)->start(auth()->user(), $id), 'Your shower timer is running. Enjoy!'); }
     public function finish(int $id): void { $this->perform(fn () => app(BookingService::class)->finish(auth()->user(), $id), 'All finished. The shower is available.'); }
-    public function requestSwap(int $from, int $to): void { $this->perform(fn () => app(BookingService::class)->requestSwap(auth()->user(), $from, $to), 'Swap requested. Your reservation stays yours until they accept.'); }
+    public function requestSwap(int $from, int $to): void
+    {
+        $this->perform(fn () => app(BookingService::class)->requestSwap(auth()->user(), $from, $to), 'Swap requested. Your reservation stays yours until they accept.');
+        $this->swapTargetId = $to;
+    }
 
     public function render()
     {
@@ -88,6 +95,9 @@ class Schedule extends Component
         catch (\App\Exceptions\CalendarException $e) { $calendarError = $e->getMessage(); }
         $blocksBusy = config('google-calendar.block_busy') && app(\App\Services\GoogleCalendar::class)->configured();
         $mine = $bookings->first(fn ($r) => $r->user_id === auth()->id() && $r->status !== 'finished' && $r->ends_at->isFuture());
+        $pendingSwaps = $mine ? SwapRequest::where('requested_by', auth()->id())
+            ->where('from_reservation_id', $mine->id)->where('status', 'pending')
+            ->where('expires_at', '>', now())->get()->keyBy('to_reservation_id') : collect();
         $rows = collect(app(SlotService::class)->slots($this->day, $settings))->map(function ($slot) use ($bookings, $familyEvents, $blocksBusy) {
             $slot['reservation'] = $bookings->first(fn ($r) => $r->starts_at->lt($slot['end']) && $r->ends_at->gt($slot['start']));
             $slot['familyConflicts'] = app(\App\Services\CalendarAvailability::class)->conflicts($familyEvents, $slot['start'], $slot['end']);
@@ -107,6 +117,6 @@ class Schedule extends Component
             $date = CarbonImmutable::parse($this->day)->startOfWeek()->addDays($offset);
             return ['date' => $date, 'bookings' => Reservation::active()->with('user')->where('day', $date->toDateString())->orderBy('starts_at')->get()];
         });
-        return view('livewire.schedule', compact('settings', 'today', 'members', 'attendance', 'bookings', 'mine', 'rows', 'totalSlots', 'nextAvailable', 'current', 'week', 'calendarError', 'blocksBusy'))->layout('layouts.app', ['title' => 'Schedule']);
+        return view('livewire.schedule', compact('settings', 'today', 'members', 'attendance', 'bookings', 'mine', 'pendingSwaps', 'rows', 'totalSlots', 'nextAvailable', 'current', 'week', 'calendarError', 'blocksBusy'))->layout('layouts.app', ['title' => 'Schedule']);
     }
 }

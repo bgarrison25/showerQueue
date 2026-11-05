@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Schedule;
 use App\Models\HouseholdSetting;
 use App\Models\Reservation;
 use App\Models\SwapRequest;
@@ -11,6 +12,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class SwapTest extends TestCase
@@ -28,6 +30,51 @@ class SwapTest extends TestCase
         $this->rb = $this->bookings->book($this->b, $this->b->id, '2026-11-09T11:20:00Z');
     }
     private function request(): SwapRequest { return $this->bookings->requestSwap($this->a, $this->ra->id, $this->rb->id); }
+    public function test_schedule_shows_pending_swap_at_the_reservation_and_after_reload(): void
+    {
+        Livewire::actingAs($this->a)->test(Schedule::class)
+            ->call('requestSwap', $this->ra->id, $this->rb->id)
+            ->assertHasNoErrors()->assertSee('Waiting for '.$this->b->name.' to accept.')
+            ->assertSee('View request')->assertDontSee('Request a swap with '.$this->b->name);
+
+        $this->assertDatabaseCount('swap_requests', 1);
+        $this->assertTrue($this->b->notifications()->get()->contains(fn ($n) => ($n->data['kind'] ?? null) === 'swap_requested'));
+        $this->assertSame($this->a->id, $this->ra->fresh()->user_id);
+        $this->assertSame($this->b->id, $this->rb->fresh()->user_id);
+        Livewire::test(Schedule::class)->assertSee('Waiting for '.$this->b->name.' to accept.');
+    }
+
+    public function test_parent_swap_button_also_shows_pending_feedback(): void
+    {
+        $this->a->update(['is_admin' => true]);
+        Livewire::actingAs($this->a)->test(Schedule::class)
+            ->call('requestSwap', $this->ra->id, $this->rb->id)
+            ->assertHasNoErrors()->assertSee('Waiting for '.$this->b->name.' to accept.')
+            ->assertSee('View swap request with '.$this->b->name);
+    }
+
+    public function test_expired_or_withdrawn_swaps_allow_a_new_request_in_the_schedule(): void
+    {
+        $swap = $this->request();
+        $component = Livewire::actingAs($this->a)->test(Schedule::class);
+        $swap->update(['expires_at' => now()->subMinute()]);
+        $component->call('$refresh')->assertDontSee('Waiting for')->assertSee('Request a swap with '.$this->b->name)
+            ->call('requestSwap', $this->ra->id, $this->rb->id)->assertHasNoErrors()->assertSee('Waiting for');
+        $this->bookings->respondSwap($this->a, SwapRequest::latest('id')->first()->id, false);
+        $component->call('$refresh')->assertDontSee('Waiting for')->assertSee('Request a swap with '.$this->b->name);
+    }
+
+    public function test_stale_swap_action_displays_error_beside_target_reservation(): void
+    {
+        $component = Livewire::actingAs($this->a)->test(Schedule::class);
+        $this->travelTo(CarbonImmutable::parse('2026-11-09T11:01:00Z'));
+        $component->call('requestSwap', $this->ra->id, $this->rb->id)
+            ->assertHasErrors('booking')->assertSet('swapTargetId', $this->rb->id)
+            ->assertSeeHtml('class="swap-feedback error-notice"')
+            ->assertSee('Only upcoming reservations can be swapped.');
+        $this->assertDatabaseCount('swap_requests', 0);
+    }
+
     public function test_acceptance_exchanges_owners_without_changing_time_claims(): void
     {
         $s = $this->request(); $claims = DB::table('reservation_minutes')->orderBy('minute')->get()->toArray();
