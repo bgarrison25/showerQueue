@@ -83,12 +83,18 @@ class Schedule extends Component
         $members = User::where('is_active', true)->get();
         $attendance = $members->mapWithKeys(fn ($u) => [$u->id => app(AttendanceService::class)->isHome($u, $this->day, $settings)]);
         $bookings = Reservation::active()->with('user')->where('day', $this->day)->orderBy('starts_at')->get();
+        $familyEvents = []; $calendarError = '';
+        try { $familyEvents = app(\App\Services\CalendarAvailability::class)->forDay($this->day); }
+        catch (\App\Exceptions\CalendarException $e) { $calendarError = $e->getMessage(); }
+        $blocksBusy = config('google-calendar.block_busy') && app(\App\Services\GoogleCalendar::class)->configured();
         $mine = $bookings->first(fn ($r) => $r->user_id === auth()->id() && $r->status !== 'finished' && $r->ends_at->isFuture());
-        $rows = collect(app(SlotService::class)->slots($this->day, $settings))->map(function ($slot) use ($bookings) {
+        $rows = collect(app(SlotService::class)->slots($this->day, $settings))->map(function ($slot) use ($bookings, $familyEvents, $blocksBusy) {
             $slot['reservation'] = $bookings->first(fn ($r) => $r->starts_at->lt($slot['end']) && $r->ends_at->gt($slot['start']));
+            $slot['familyConflicts'] = app(\App\Services\CalendarAvailability::class)->conflicts($familyEvents, $slot['start'], $slot['end']);
+            $slot['blocked'] = $blocksBusy && count($slot['familyConflicts']) > 0;
             return $slot;
         });
-        $nextAvailable = $rows->first(fn ($slot) => !$slot['reservation'] && $slot['start']->isFuture());
+        $nextAvailable = $calendarError && $blocksBusy ? null : $rows->first(fn ($slot) => !$slot['reservation'] && !$slot['blocked'] && $slot['start']->isFuture());
         $rows = $rows->filter(function ($slot) use ($today) {
             if (!$this->showPast && $this->day === $today && $slot['end']->isPast()) return false;
             $hour = (int) $slot['local']->format('H');
@@ -101,6 +107,6 @@ class Schedule extends Component
             $date = CarbonImmutable::parse($this->day)->startOfWeek()->addDays($offset);
             return ['date' => $date, 'bookings' => Reservation::active()->with('user')->where('day', $date->toDateString())->orderBy('starts_at')->get()];
         });
-        return view('livewire.schedule', compact('settings', 'today', 'members', 'attendance', 'bookings', 'mine', 'rows', 'totalSlots', 'nextAvailable', 'current', 'week'))->layout('layouts.app', ['title' => 'Schedule']);
+        return view('livewire.schedule', compact('settings', 'today', 'members', 'attendance', 'bookings', 'mine', 'rows', 'totalSlots', 'nextAvailable', 'current', 'week', 'calendarError', 'blocksBusy'))->layout('layouts.app', ['title' => 'Schedule']);
     }
 }

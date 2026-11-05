@@ -19,6 +19,7 @@ class SendPush implements ShouldQueue
     public function handle(NotificationService $notifications): void
     {
         $user = User::find($this->userId);
+        if ($this->kind === 'family_overlap' && !app(\App\Services\CalendarConflictService::class)->stillOverlaps($this->userId, $this->eventKey)) return;
         if (in_array($this->kind, ['soon', 'next']) && preg_match('/^(?:soon|next):(\d+):(\d+)$/', $this->eventKey, $match)) {
             $valid = \App\Models\Reservation::where('id', $match[1])->where('revision', $match[2])->where('user_id', $this->userId)->where('status', 'booked')->where('ends_at', '>', now())->exists();
             if (!$valid) return;

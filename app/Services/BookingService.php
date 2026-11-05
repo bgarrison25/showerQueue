@@ -13,15 +13,28 @@ class BookingService
 {
     public function __construct(private HouseholdLock $lock, private SlotService $slots, private AttendanceService $attendance, private NotificationService $notifications) {}
 
-    public function book(User $actor, int $ownerId, string $iso, bool $override = false, ?int $replaceId = null, ?int $patternId = null): Reservation
+    public function book(User $actor, int $ownerId, string $iso, bool $override = false, ?int $replaceId = null, ?int $patternId = null, ?array $calendarEvents = null): Reservation
     {
-        return $this->lock->run(function () use ($actor, $ownerId, $iso, $override, $replaceId, $patternId) {
+        $this->actor($actor);
+        abort_unless($actor->is_admin || ($ownerId === $actor->id && !$override && !$patternId), 403);
+        if (!$override && config('google-calendar.block_busy') && app(GoogleCalendar::class)->configured() && $calendarEvents === null) {
+            [$start, , $day] = $this->slots->resolve($iso, HouseholdSetting::current());
+            try { $calendarEvents = app(CalendarAvailability::class)->forDay($day, true); }
+            catch (\App\Exceptions\CalendarException $e) { throw ValidationException::withMessages(['booking' => $e->getMessage().' Availability could not be checked. Your existing reservation is safe.']); }
+        }
+        // Google is checked before obtaining the household write lock. Recurrences
+        // provide a freshly fetched window, avoiding network I/O inside their transaction.
+        return $this->lock->run(function () use ($actor, $ownerId, $iso, $override, $replaceId, $patternId, $calendarEvents) {
             $this->actor($actor);
             abort_unless($actor->is_admin || ($ownerId === $actor->id && !$override && !$patternId), 403);
             $owner = User::findOrFail($ownerId);
             $this->check($owner->is_active, 'This account is paused.');
             $settings = HouseholdSetting::current();
             [$start, $end, $day] = $this->slots->resolve($iso, $settings);
+            if (!$override && config('google-calendar.block_busy')) {
+                $conflicts = app(CalendarAvailability::class)->conflicts($calendarEvents ?? [], $start, $end);
+                $this->check(!$conflicts, 'A busy family event overlaps that time. Choose another slot or ask a parent to use an override.');
+            }
             $old = $replaceId ? Reservation::find($replaceId) : null;
             $this->check(!$replaceId || $old !== null, 'Your original reservation changed. Refresh the schedule and choose again.');
             if ($old) {

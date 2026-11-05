@@ -10,6 +10,7 @@ Route::middleware('guest')->group(function () {
 });
 Route::middleware(['auth', 'household'])->group(function () {
     Route::get('/', \App\Livewire\Schedule::class)->name('schedule');
+    Route::get('/calendar', \App\Livewire\Calendar::class)->name('calendar');
     Route::get('/swaps', \App\Livewire\Swaps::class)->name('swaps');
     Route::get('/inbox', \App\Livewire\Inbox::class)->name('inbox');
     Route::get('/preferences', \App\Livewire\Preferences::class)->name('preferences');

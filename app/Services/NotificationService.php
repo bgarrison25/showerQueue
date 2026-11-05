@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class NotificationService
 {
-    public const TYPES = ['booked' => 'New reservations', 'changed' => 'Changes & cancellations', 'swap_requested' => 'Swap requests', 'swap_resolved' => 'Swap responses', 'soon' => 'Shower reminders', 'next' => 'Your turn is next'];
+    public const TYPES = ['booked' => 'New reservations', 'changed' => 'Changes & cancellations', 'swap_requested' => 'Swap requests', 'swap_resolved' => 'Swap responses', 'soon' => 'Shower reminders', 'next' => 'Your turn is next', 'family_overlap' => 'Family events overlapping your shower'];
 
     public function preferences(User $user): array
     {

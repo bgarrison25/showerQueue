@@ -15,3 +15,19 @@ Artisan::command('showerqueue:recurrences', function () {
 
 Schedule::command('showerqueue:tick')->everyMinute()->withoutOverlapping();
 Schedule::command('showerqueue:recurrences')->dailyAt('00:05')->timezone('UTC')->withoutOverlapping();
+
+Artisan::command('showerqueue:calendar-sync', function () {
+    $google = app(\App\Services\GoogleCalendar::class);
+    if (!$google->configured()) { $this->info('Google Calendar is not configured; nothing to sync.'); return 0; }
+    try {
+        $count = app(\App\Services\CalendarSyncService::class)->run();
+        app(\App\Services\CalendarConflictService::class)->run();
+        $this->info("Calendar checked: $count shower reservations, plus family overlap alerts.");
+        return 0;
+    } catch (\App\Exceptions\CalendarException $e) {
+        $this->error($e->getMessage());
+        return 1;
+    }
+})->purpose('Publish showers to Google Calendar and notify owners about family-event overlaps');
+
+Schedule::command('showerqueue:calendar-sync')->everyMinute()->withoutOverlapping(10);

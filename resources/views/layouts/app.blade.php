@@ -19,7 +19,7 @@
         <a href="/" class="brand"><span class="brand-mark"><x-icon name="drop" size="25"/></span><span>Shower<span class="brand-light">Queue</span><small>A little order. A better day.</small></span></a>
         <p class="nav-label">YOUR HOUSEHOLD</p>
         <nav class="desktop-nav" aria-label="Main navigation">
-            @foreach([['schedule','calendar','Schedule'],['swaps','swap','Swaps'],['inbox','bell','Inbox'],['preferences','settings','Preferences']] as [$route,$icon,$label])
+            @foreach([['schedule','drop','Showers'],['calendar','calendar','Calendar'],['swaps','swap','Swaps'],['inbox','bell','Inbox'],['preferences','settings','Preferences']] as [$route,$icon,$label])
             @if($route === 'inbox')
                 <livewire:notification-link placement="sidebar" :active="request()->routeIs('inbox')" key="notification-sidebar"/>
             @else
@@ -34,11 +34,11 @@
     <div class="main-column">
         <header class="topbar"><a class="mobile-brand" href="/"><span class="brand-mark"><x-icon name="drop"/></span><strong>ShowerQueue</strong></a><span class="desktop-only topbar-label">A smoother routine starts here.</span><div class="topbar-right"><span class="sync-label"><i></i> Household in sync</span><livewire:notification-link placement="header" key="notification-header"/><button class="icon-button mobile-only" type="button" data-theme-toggle aria-label="Change appearance"><x-icon name="sun"/></button></div></header>
         <main id="main" class="page-content">{{ $slot ?? '' }}@yield('content')</main>
-        <footer class="page-footer"><span>Made for your household. Just showers, simply.</span><span>ShowerQueue <span class="footer-dot">·</span> Private by design</span></footer>
+        <footer class="page-footer"><span>Made for your household. A little more harmony.</span><span>ShowerQueue <span class="footer-dot">·</span> Private by design</span></footer>
     </div>
 </div>
 <nav class="mobile-nav" aria-label="Mobile navigation">
-    @foreach([['schedule','calendar','Schedule'],['swaps','swap','Swaps'],['inbox','bell','Inbox'],['preferences','settings','You']] as [$route,$icon,$label])
+    @foreach([['schedule','drop','Showers'],['calendar','calendar','Calendar'],['swaps','swap','Swaps'],['inbox','bell','Inbox'],['preferences','settings','You']] as [$route,$icon,$label])
         @if($route === 'inbox')
             <livewire:notification-link placement="mobile" :active="request()->routeIs('inbox')" key="notification-mobile"/>
         @else
