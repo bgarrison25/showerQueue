@@ -171,10 +171,16 @@ class GoogleCalendar
     {
         if (!$this->configured()) throw new CalendarException('Google Calendar is not connected yet.');
         $url = 'https://www.googleapis.com/calendar/v3/calendars/'.rawurlencode((string) config('google-calendar.id')).'/events'.$path;
+        $options = match ($method) {
+            'GET' => ['query' => $data],
+            // Google rejects DELETE requests with a JSON body, including [].
+            'DELETE' => [],
+            default => ['json' => $data],
+        };
         for ($attempt = 0; $attempt < 2; $attempt++) {
             try {
                 $response = Http::withToken($this->token())->acceptJson()->withHeaders($headers)->connectTimeout(5)->timeout(15)
-                    ->send($method, $url, $method === 'GET' ? ['query' => $data] : ['json' => $data]);
+                    ->send($method, $url, $options);
             } catch (ConnectionException) {
                 throw new CalendarException('Google Calendar is unavailable right now. Please try again shortly.');
             }

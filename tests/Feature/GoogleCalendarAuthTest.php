@@ -83,4 +83,21 @@ class GoogleCalendarAuthTest extends TestCase
         $this->assertSame([], app(GoogleCalendar::class)->events($start, $start->addDay()));
         Http::assertSentCount(2);
     }
+
+    public function test_delete_sends_no_body_and_preserves_the_google_etag_precondition(): void
+    {
+        config(['google-calendar.id' => 'shared@example.test', 'google-calendar.credentials' => 'fake-key']);
+        Cache::put('google-calendar:token:'.hash('sha256', 'fake-key'), 'token', 3300);
+        Http::preventStrayRequests();
+        Http::fake(function (Request $request) {
+            // Google's DELETE endpoint rejects even an empty JSON array.
+            if ($request->body() !== '') return Http::response(['error' => ['message' => 'Invalid JSON payload received.']], 400);
+            return Http::response(null, 204);
+        });
+        app(GoogleCalendar::class)->delete('googleevent_20261109T110500Z', '"6383450978000000"');
+        Http::assertSent(fn (Request $request) => $request->method() === 'DELETE'
+            && $request->body() === ''
+            && $request->header('If-Match')[0] === '"6383450978000000"'
+            && str_ends_with($request->url(), '/googleevent_20261109T110500Z'));
+    }
 }

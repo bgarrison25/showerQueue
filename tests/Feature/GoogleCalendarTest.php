@@ -65,7 +65,10 @@ class GoogleCalendarTest extends TestCase
             }
             if (!isset($this->events[$id])) return Http::response([], 404);
             if ($request->hasHeader('If-Match') && $request->header('If-Match')[0] !== $this->events[$id]['etag']) return Http::response([], 412);
-            if ($request->method() === 'DELETE') { $this->events[$id]['status'] = 'cancelled'; return Http::response(null, 204); }
+            if ($request->method() === 'DELETE') {
+                if ($request->body() !== '') return Http::response(['error' => ['message' => 'Invalid JSON payload received.']], 400);
+                $this->events[$id]['status'] = 'cancelled'; return Http::response(null, 204);
+            }
             if ($request->method() === 'PATCH') {
                 $this->events[$id] = array_replace_recursive($this->events[$id], $request->data(), ['etag' => 'etag-'.++$this->etag]);
                 return Http::response($this->events[$id]);
@@ -122,6 +125,26 @@ class GoogleCalendarTest extends TestCase
         $page = Livewire::actingAs($this->parent)->test(Calendar::class)->call('newEvent')->set('title', 'Dinner')->call('saveEvent')->assertHasErrors('calendar')->assertSet('formOpen', true);
         $page->call('saveEvent')->assertHasNoErrors()->assertSet('formOpen', false);
         $this->assertCount(1, $this->events);
+    }
+
+    public function test_parent_can_delete_an_event_created_directly_in_google_calendar(): void
+    {
+        $event = $this->family(extra: ['etag' => '"6383450978000000"', 'creator' => ['email' => 'parent@example.test']]);
+        Livewire::actingAs($this->parent)->test(Calendar::class)
+            ->call('editEvent', $event['id'])->assertHasNoErrors()
+            ->call('deleteEvent')->assertHasNoErrors()->assertSet('formOpen', false)->assertSee('Family event removed');
+        $this->assertSame('cancelled', $this->events[$event['id']]['status']);
+    }
+
+    public function test_deleting_a_google_recurring_occurrence_preserves_other_occurrences(): void
+    {
+        $first = $this->family('series123_20261109T110500Z', extra: ['recurringEventId' => 'series123', 'etag' => '"6383450978000000"']);
+        $second = $this->family('series123_20261116T110500Z', '2026-11-16T11:05:00Z', '2026-11-16T11:25:00Z', ['recurringEventId' => 'series123']);
+        Livewire::actingAs($this->parent)->test(Calendar::class)
+            ->call('editEvent', $first['id'])->assertSet('recurring', true)
+            ->call('deleteEvent')->assertHasNoErrors();
+        $this->assertSame('cancelled', $this->events[$first['id']]['status']);
+        $this->assertArrayNotHasKey('status', $this->events[$second['id']]);
     }
 
     public function test_all_day_end_is_exclusive_and_is_not_a_booking_block(): void
