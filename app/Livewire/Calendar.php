@@ -6,7 +6,6 @@ use App\Exceptions\CalendarException;
 use App\Models\HouseholdSetting;
 use App\Models\Reservation;
 use App\Services\CalendarAvailability;
-use App\Services\CalendarConflictService;
 use App\Services\CalendarSyncService;
 use App\Services\FamilyCalendar;
 use App\Services\GoogleCalendar;
@@ -48,7 +47,7 @@ class Calendar extends Component
         } catch (\Throwable) { $this->day = $today->toDateString(); }
     }
 
-    public function selectDay(string $day): void { $this->day = $day; $this->normalizeDay(); }
+    public function selectDay(string $day): void { $this->day = $day; $this->normalizeDay(); $this->dispatch('calendar-day-selected'); }
     public function today(): void { $this->day = CarbonImmutable::now(HouseholdSetting::current()->timezone)->toDateString(); }
     public function navigate(int $months): void
     {
@@ -70,6 +69,7 @@ class Calendar extends Component
         $this->creationId = str_replace('-', '', (string) Str::uuid());
         $this->startsAt = $this->day.'T17:00'; $this->endsAt = $this->day.'T18:00';
         $this->resetErrorBag(); $this->formOpen = true;
+        $this->dispatch('calendar-editor-opened');
     }
 
     public function updatedAllDay(): void
@@ -99,6 +99,7 @@ class Calendar extends Component
             $this->description = strip_tags($event['description'] ?? '');
             $this->busy = ($event['transparency'] ?? 'opaque') !== 'transparent';
             $this->formOpen = true;
+            $this->dispatch('calendar-editor-opened');
         });
     }
 
@@ -109,7 +110,7 @@ class Calendar extends Component
             app(FamilyCalendar::class)->save(auth()->user(), $this->only(['title', 'location', 'description', 'allDay', 'busy', 'startsAt', 'endsAt']), $this->creationId, $this->eventId, $this->etag);
             $this->day = substr($this->startsAt, 0, 10);
             $this->formOpen = false;
-            $this->notice = 'Family event saved to Google Calendar. Overlap alerts will be checked within about a minute.';
+            $this->notice = 'Family event saved to Google Calendar. Household notifications and overlap alerts will be checked within about a minute.';
         });
     }
 
@@ -130,9 +131,8 @@ class Calendar extends Component
             if (!RateLimiter::attempt('google-calendar:manual-sync', 1, function () {
                 if (!app(GoogleCalendar::class)->configured()) throw new CalendarException('Connect Google Calendar before syncing.');
                 app(CalendarSyncService::class)->run();
-                app(CalendarConflictService::class)->run();
             }, 60)) throw new CalendarException('The calendar was just checked. Try again in a minute.');
-            $this->notice = 'Shower bookings synced and family overlaps checked.';
+            $this->notice = 'Calendar synced. New family events announced and overlaps checked.';
             $this->dispatch('notifications-updated');
         });
     }

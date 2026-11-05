@@ -15,12 +15,12 @@ class CalendarConflictService
         return "family-overlap:{$reservation->id}:{$reservation->user_id}:$signature";
     }
 
-    public function run(): int
+    public function run(?array $events = null): int
     {
         if (!$this->google->configured()) return 0;
         $start = CarbonImmutable::now()->startOfMinute();
         $end = $start->addDays(91);
-        $events = $this->google->events($start, $end, true);
+        $events ??= $this->google->events($start, $end, true);
         $count = 0;
         foreach (Reservation::with('user')->whereIn('status', ['booked', 'running'])->where('ends_at', '>', now())->where('starts_at', '<', $end)->get() as $reservation) {
             foreach ($this->availability->conflicts($events, $reservation->starts_at, $reservation->ends_at) as $event) {

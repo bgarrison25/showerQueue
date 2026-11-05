@@ -6,6 +6,7 @@ use App\Exceptions\CalendarException;
 use App\Models\CalendarExport;
 use App\Models\HouseholdSetting;
 use App\Models\Reservation;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
@@ -28,6 +29,10 @@ class CalendarSyncService
                 if ($reservation->ends_at->lt(now()->subDay()) && $reservation->status !== 'cancelled') continue;
                 $this->sync($reservation); $count++;
             }
+            $start = CarbonImmutable::now()->startOfMinute();
+            $events = $this->google->events($start, $start->addDays(91), true);
+            app(CalendarEventNotificationService::class)->announce($events);
+            app(CalendarConflictService::class)->run($events);
             Cache::put('google-calendar:last-sync:'.$this->google->calendarKey(), now()->toIso8601String(), now()->addDays(7));
             return $count;
         }) ?? 0;

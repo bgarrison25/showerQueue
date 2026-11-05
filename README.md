@@ -41,7 +41,7 @@ This generates another one-time password, revokes that member’s sessions and p
 | Area | Behavior |
 | --- | --- |
 | Shared calendar | Daily schedule, date navigation, a week agenda, time-of-day filters, availability, owners, and 10-second visible-page polling. The first 12 matching slots appear initially; “Show all” reveals the rest. |
-| Family calendar | Combined month view and daily agenda for showers and a private shared Google Calendar. Parents add/edit/delete family plans; timed Busy events block shower slots, with owner alerts for existing overlaps. Requires Google connection setup and the scheduler. See [Google Calendar setup](docs/GOOGLE_CALENDAR.md). |
+| Family calendar | Combined month view with the selected day's events directly below the grid. Parents add/edit/delete family plans; timed Busy events block shower slots, with owner alerts for existing overlaps. Sync announces new family events once to the household, including optional phone push. Requires Google connection setup and the scheduler. See [Google Calendar setup](docs/GOOGLE_CALENDAR.md). |
 | Booking | One tap to reserve; one non-cancelled reservation per person per household calendar day. Parent overrides allow extra bookings. Overlaps are always rejected. |
 | Changes | Move an upcoming reservation without cancelling first. A failed move leaves its original time and database claims untouched. Parents can manage any booking. |
 | Swaps | Request from someone else’s time in the day calendar. Recipient accepts or declines in Swaps. Parents can approve any request. Exchanges commit atomically; requests expire after 12 hours or before either shower starts. |

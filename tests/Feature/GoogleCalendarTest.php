@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Exceptions\CalendarException;
+use App\Jobs\SendPush;
 use App\Livewire\Calendar;
 use App\Livewire\Schedule;
 use App\Models\CalendarExport;
@@ -12,6 +13,7 @@ use App\Models\User;
 use App\Services\BookingService;
 use App\Services\CalendarAvailability;
 use App\Services\CalendarConflictService;
+use App\Services\CalendarEventNotificationService;
 use App\Services\CalendarSyncService;
 use App\Services\FamilyCalendar;
 use App\Services\GoogleCalendar;
@@ -22,6 +24,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -317,5 +320,121 @@ class GoogleCalendarTest extends TestCase
             $this->assertStringNotContainsString('test-token', $e->getMessage());
         }
         $this->assertDatabaseCount('reservations', 0);
+    }
+
+    public function test_scheduled_sync_announces_new_family_events_to_the_household_and_queues_phone_push(): void
+    {
+        $this->family();
+        $paused = User::factory()->create(['is_active' => false]);
+        config(['webpush.vapid.public_key' => 'test-public', 'webpush.vapid.private_key' => 'test-private']);
+        Queue::fake();
+        $this->artisan('showerqueue:calendar-sync')->assertSuccessful();
+        foreach ([$this->parent, $this->child] as $user) {
+            $notification = $user->notifications()->sole();
+            $this->assertSame('family_event', $notification->data['kind']);
+            $this->assertSame('New family event: School run', $notification->data['title']);
+            $this->assertSame('/calendar', $notification->data['url']);
+            $this->assertStringContainsString('Mon, Nov 9 · 6:05 AM', $notification->data['body']);
+            Queue::assertPushed(SendPush::class, fn ($job) => $job->userId === $user->id && $job->kind === 'family_event');
+        }
+        $this->assertSame(0, $paused->notifications()->count());
+        Queue::assertPushed(SendPush::class, 2);
+    }
+
+    public function test_repeat_sync_cache_resets_and_event_edits_do_not_repeat_announcements(): void
+    {
+        $event = $this->family();
+        app(CalendarSyncService::class)->run();
+        Cache::flush();
+        Cache::put('google-calendar:token:'.hash('sha256', 'test-credentials'), 'test-token', 3300);
+        $this->events[$event['id']]['summary'] = 'School run updated';
+        $this->events[$event['id']]['start']['dateTime'] = '2026-11-09T12:00:00Z';
+        $this->events[$event['id']]['end']['dateTime'] = '2026-11-09T12:20:00Z';
+        $this->artisan('showerqueue:calendar-sync')->assertSuccessful();
+        $this->assertDatabaseCount('calendar_announcements', 1);
+        $this->assertSame(1, $this->parent->notifications()->count());
+        $this->assertSame(1, $this->child->notifications()->count());
+        $this->family('newfamily1', '2026-11-10T12:00:00Z', '2026-11-10T13:00:00Z');
+        app(CalendarSyncService::class)->run();
+        $this->assertSame(2, $this->child->notifications()->count());
+    }
+
+    public function test_recurring_series_is_announced_once_with_its_next_occurrence(): void
+    {
+        $later = $this->family('weeklylate', '2026-11-16T11:05:00Z', '2026-11-16T11:25:00Z', ['recurringEventId' => 'weeklyseries']);
+        $next = $this->family(extra: ['recurringEventId' => 'weeklyseries']);
+        $service = app(CalendarEventNotificationService::class);
+        $this->assertSame(1, $service->announce([$later, $next]));
+        $this->assertStringContainsString('Repeats · next: Mon, Nov 9', $this->child->notifications()->sole()->data['body']);
+        $this->travel(8)->days();
+        $this->assertSame(0, $service->announce([$later]));
+        $this->assertSame(1, $this->child->notifications()->count());
+    }
+
+    public function test_all_day_and_free_family_plans_are_announced_too(): void
+    {
+        $allDay = ['id' => 'holiday123', 'summary' => 'Family weekend', 'start' => ['date' => '2026-11-14'], 'end' => ['date' => '2026-11-16']];
+        $free = $this->family(extra: ['transparency' => 'transparent']);
+        $this->assertSame(2, app(CalendarEventNotificationService::class)->announce([$allDay, $free]));
+        $bodies = $this->child->notifications()->get()->pluck('data.body')->implode(' ');
+        $this->assertStringContainsString('Sat, Nov 14 – Sun, Nov 15 · All day', $bodies);
+        $this->assertStringContainsString('6:05 AM', $bodies);
+    }
+
+    public function test_past_cancelled_malformed_and_exported_shower_events_are_not_announced(): void
+    {
+        $past = $this->family('pastevent', '2026-11-08T11:00:00Z', '2026-11-08T12:00:00Z');
+        $cancelled = $this->family('cancelled1', extra: ['status' => 'cancelled']);
+        $shower = $this->family('showercopy', extra: ['extendedProperties' => ['private' => ['showerqueue' => 'any-installation']]]);
+        $this->assertSame(0, app(CalendarEventNotificationService::class)->announce([$past, $cancelled, $shower, ['id' => 'malformed']]));
+        $this->assertDatabaseCount('calendar_announcements', 0);
+        $this->assertDatabaseCount('notifications', 0);
+    }
+
+    public function test_family_event_announcements_respect_household_defaults_and_personal_preferences(): void
+    {
+        HouseholdSetting::current()->update(['notification_defaults' => ['family_event' => false]]);
+        $this->child->forceFill(['notification_preferences' => ['family_event' => true]])->save();
+        app(CalendarEventNotificationService::class)->announce([$this->family()]);
+        $this->assertSame(0, $this->parent->notifications()->count());
+        $this->assertSame(1, $this->child->notifications()->count());
+        Livewire::actingAs($this->child)->test(\App\Livewire\Preferences::class)->assertSee('New family calendar events')->set('preferences.family_event', false)->call('save')->assertHasNoErrors();
+        app(CalendarEventNotificationService::class)->announce([$this->family('another123')]);
+        $this->assertSame(1, $this->child->notifications()->count());
+    }
+
+    public function test_failed_announcements_roll_back_the_marker_so_sync_can_retry(): void
+    {
+        $event = $this->family();
+        $failing = \Mockery::mock(\App\Services\NotificationService::class);
+        $failing->shouldReceive('household')->once()->andThrow(new \RuntimeException('Temporary delivery failure'));
+        app()->instance(\App\Services\NotificationService::class, $failing);
+        try { app(CalendarEventNotificationService::class)->announce([$event]); $this->fail('Expected a delivery failure'); }
+        catch (\RuntimeException $e) { $this->assertSame('Temporary delivery failure', $e->getMessage()); }
+        $this->assertDatabaseCount('calendar_announcements', 0);
+        app()->forgetInstance(\App\Services\NotificationService::class);
+        $this->assertSame(1, app(CalendarEventNotificationService::class)->announce([$event]));
+        $this->assertSame(1, $this->child->notifications()->count());
+    }
+
+    public function test_manual_sync_announces_events_created_from_the_app_without_duplicate_pushes(): void
+    {
+        $page = Livewire::actingAs($this->parent)->test(Calendar::class)->call('newEvent')->set('title', 'Dinner together')->call('saveEvent')->assertHasNoErrors();
+        $page->call('syncNow')->assertHasNoErrors()->assertDispatched('notifications-updated');
+        $this->assertSame('New family event: Dinner together', $this->child->notifications()->sole()->data['title']);
+        $this->artisan('showerqueue:calendar-sync')->assertSuccessful();
+        $this->assertSame(1, $this->child->notifications()->count());
+    }
+
+    public function test_selecting_a_day_updates_the_inline_agenda_and_requests_visible_feedback(): void
+    {
+        $this->family();
+        $page = Livewire::actingAs($this->child)->test(Calendar::class)->call('selectDay', '2026-11-09')
+            ->assertDispatched('calendar-day-selected')->assertSee('Monday, November 9')
+            ->assertDontSee('Busy timed events keep shower slots clear.');
+        $this->assertStringContainsString('School run', explode('id="selected-day-events"', $page->html(), 2)[1]);
+        $page->call('selectDay', '2026-11-10')->assertSee('Tuesday, November 10')->assertSee('Nothing on the calendar for this day.');
+        $agendaHtml = explode('id="selected-day-events"', $page->html(), 2)[1];
+        $this->assertStringNotContainsString('School run', $agendaHtml);
     }
 }

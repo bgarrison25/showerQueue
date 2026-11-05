@@ -21,13 +21,12 @@ Artisan::command('showerqueue:calendar-sync', function () {
     if (!$google->configured()) { $this->info('Google Calendar is not configured; nothing to sync.'); return 0; }
     try {
         $count = app(\App\Services\CalendarSyncService::class)->run();
-        app(\App\Services\CalendarConflictService::class)->run();
-        $this->info("Calendar checked: $count shower reservations, plus family overlap alerts.");
+        $this->info("Calendar checked: $count shower reservations, plus new family events and overlap alerts.");
         return 0;
     } catch (\App\Exceptions\CalendarException $e) {
         $this->error($e->getMessage());
         return 1;
     }
-})->purpose('Publish showers to Google Calendar and notify owners about family-event overlaps');
+})->purpose('Sync showers, announce new family events, and check family-event overlaps');
 
 Schedule::command('showerqueue:calendar-sync')->everyMinute()->withoutOverlapping(10);
