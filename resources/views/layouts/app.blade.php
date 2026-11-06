@@ -13,7 +13,7 @@
 </head>
 <body>
 <a href="#main" class="skip-link">Skip to content</a>
-@auth
+@if(auth()->check() && !auth()->user()->must_change_password)
 <div class="app-shell">
     <aside class="sidebar">
         <div class="sidebar-brand-panel">
@@ -46,7 +46,7 @@
 </nav>
 @else
 <main id="main" class="auth-page"><a href="/login" class="brand auth-brand"><span class="brand-mark"><x-icon name="drop" size="27"/></span><span>Shower<span class="brand-light">Queue</span></span></a>{{ $slot ?? '' }}@yield('content')</main>
-@endauth
+@endif
 @livewireScripts
 </body>
 </html>

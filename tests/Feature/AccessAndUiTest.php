@@ -31,6 +31,20 @@ class AccessAndUiTest extends TestCase
     {
         $this->actingAs(User::factory()->create(['must_change_password' => true]))->get('/')->assertRedirect('/password');
     }
+    public function test_first_login_can_replace_temporary_password_and_unlock_navigation(): void
+    {
+        $temporary = bin2hex(random_bytes(16));
+        $member = User::factory()->create(['name' => 'FirstLogin', 'password' => $temporary, 'must_change_password' => true]);
+        $this->post('/login', ['name' => $member->name, 'password' => $temporary])->assertRedirect('/');
+        $this->get('/')->assertRedirect('/password');
+        $this->get('/password')->assertOk()->assertSee('Temporary password')->assertDontSee('Main navigation')->assertDontSee('Mobile navigation');
+        $pin = (string) random_int(100000, 999999);
+        $this->put('/password', ['current_password' => $temporary, 'password' => $pin, 'password_confirmation' => $pin])->assertSessionHasNoErrors()->assertRedirect('/');
+        $this->assertFalse($member->fresh()->must_change_password);
+        $this->assertTrue(Hash::check($pin, $member->fresh()->password));
+        $this->get('/')->assertOk()->assertSee('Main navigation');
+    }
+
     public function test_login_is_rate_limited(): void
     {
         for ($i = 0; $i < 5; $i++) $this->post('/login', ['name' => 'Nobody', 'password' => 'incorrect'])->assertSessionHasErrors();

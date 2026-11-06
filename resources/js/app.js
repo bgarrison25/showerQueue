@@ -1,3 +1,4 @@
+import { handleOfflineSubmit } from './offline-forms';
 import { profilePhotoPicker } from './profile-photo';
 window.profilePhotoPicker = profilePhotoPicker;
 
@@ -57,4 +58,4 @@ document.addEventListener('click', async event => {
 
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {}));
 // Offline mutations are never queued or retried automatically.
-document.addEventListener('submit', event => { if (!navigator.onLine) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+document.addEventListener('submit', handleOfflineSubmit, true);
