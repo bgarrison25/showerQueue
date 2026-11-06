@@ -91,6 +91,18 @@ class HouseholdAdmin extends Component
     }
     public function render()
     {
-        return view('livewire.household-admin', ['members' => User::all(), 'patterns' => RecurringPattern::with('user')->where('enabled', true)->get(), 'overrides' => DB::table('attendance_overrides')->join('users', 'users.id', '=', 'attendance_overrides.user_id')->select('attendance_overrides.*', 'users.name')->orderByDesc('day')->limit(30)->get(), 'conflicts' => DB::table('recurrence_results')->where('result', 'conflict')->where('day', '>=', app(SlotService::class)->today())->orderBy('day')->limit(30)->get()])->layout('layouts.app', ['title' => 'Household']);
+        $members = User::all();
+        $overrides = DB::table('attendance_overrides')->join('users', 'users.id', '=', 'attendance_overrides.user_id')
+            ->select('attendance_overrides.*', 'users.name')->orderByDesc('day')->limit(30)->get()
+            ->map(function ($override) use ($members) {
+                $override->display_name = $members->firstWhere('id', $override->user_id)?->display_name ?? $override->name;
+                return $override;
+            });
+        return view('livewire.household-admin', [
+            'members' => $members,
+            'patterns' => RecurringPattern::with('user')->where('enabled', true)->get(),
+            'overrides' => $overrides,
+            'conflicts' => DB::table('recurrence_results')->where('result', 'conflict')->where('day', '>=', app(SlotService::class)->today())->orderBy('day')->limit(30)->get(),
+        ])->layout('layouts.app', ['title' => 'Manage household']);
     }
 }

@@ -61,7 +61,7 @@ class BookingService
             DB::table('reservation_minutes')->insert($minutes);
             $kind = $old ? 'changed' : 'booked';
             $label = $start->setTimezone($settings->timezone)->format('D, M j · g:i A T');
-            $this->notifications->household($kind, "{$owner->name}'s shower ".($old ? 'moved' : 'reserved'), $label, "$kind:{$reservation->id}");
+            $this->notifications->household($kind, "{$owner->display_name}'s shower ".($old ? 'moved' : 'reserved'), $label, "$kind:{$reservation->id}");
             return $reservation;
         });
     }
@@ -74,7 +74,7 @@ class BookingService
             abort_unless($actor->is_admin || $r->user_id === $actor->id, 403);
             $this->check($r->status === 'booked' && ($actor->is_admin || $r->ends_at->isFuture()), 'This reservation can no longer be cancelled.');
             $this->cancelInside($r);
-            $this->notifications->household('changed', "{$r->user->name}'s shower cancelled", $r->starts_at->setTimezone(HouseholdSetting::current()->timezone)->format('D, M j · g:i A T'), "cancelled:$id");
+            $this->notifications->household('changed', "{$r->user->display_name}'s shower cancelled", $r->starts_at->setTimezone(HouseholdSetting::current()->timezone)->format('D, M j · g:i A T'), "cancelled:$id");
         });
     }
 
@@ -97,7 +97,7 @@ class BookingService
             $this->check(!SwapRequest::where('requested_by', $actor->id)->where('from_reservation_id', $fromId)->where('to_reservation_id', $toId)->where('status', 'pending')->where('expires_at', '>', now())->exists(), 'You have already requested this swap.');
             $expires = now()->addHours(12)->min($a->starts_at)->min($b->starts_at);
             $swap = SwapRequest::create(['from_reservation_id' => $fromId, 'to_reservation_id' => $toId, 'requested_by' => $actor->id, 'recipient_id' => $b->user_id, 'from_revision' => $a->revision, 'to_revision' => $b->revision, 'expires_at' => $expires]);
-            $this->notifications->send($b->user, 'swap_requested', "{$actor->name} wants to swap", 'Open Swaps to see the times and respond.', "swap-request:{$swap->id}");
+            $this->notifications->send($b->user, 'swap_requested', "{$actor->display_name} wants to swap", 'Open Swaps to see the times and respond.', "swap-request:{$swap->id}");
             return $swap;
         });
     }

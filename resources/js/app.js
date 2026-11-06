@@ -1,3 +1,6 @@
+import { profilePhotoPicker } from './profile-photo';
+window.profilePhotoPicker = profilePhotoPicker;
+
 // Livewire provides Alpine. The countdown uses server time plus a monotonic clock,
 // so an incorrectly set phone clock cannot extend a reservation.
 window.showerTimer = (end, serverNow) => ({
@@ -20,7 +23,9 @@ const applicationKey = value => Uint8Array.from(atob(value.replace(/-/g, '+').re
 document.addEventListener('click', async event => {
     if (event.target.closest('[data-theme-toggle]')) {
         const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-        document.documentElement.dataset.theme = next; localStorage.setItem('sq-theme', next);
+        document.documentElement.dataset.theme = next;
+        document.querySelector('meta[name=theme-color]').content = next === 'dark' ? '#101416' : '#f8f7f4';
+        try { localStorage.setItem('sq-theme', next); } catch { /* Appearance still works when storage is unavailable. */ }
     }
     if (event.target.closest('[data-install-app]') && installPrompt) { await installPrompt.prompt(); installPrompt = null; }
     const enable = event.target.closest('[data-enable-push]');

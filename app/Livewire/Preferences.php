@@ -23,5 +23,5 @@ class Preferences extends Component
         $this->preferences = app(NotificationService::class)->preferences(auth()->user());
         $this->notice = 'You’re now using the household notification defaults.';
     }
-    public function render() { return view('livewire.preferences')->layout('layouts.app', ['title' => 'Your preferences']); }
+    public function render() { return view('livewire.preferences')->layout('layouts.app', ['title' => 'Settings']); }
 }

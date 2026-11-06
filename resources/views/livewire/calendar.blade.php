@@ -3,7 +3,7 @@
      x-on:calendar-editor-opened.window="$nextTick(() => { $refs.eventEditor.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); $refs.eventTitle.focus({ preventScroll: true }); })">
     <div class="offline-banner" wire:offline role="alert">You’re offline. Reconnect to view updates or change family events.</div>
     <div class="page-heading family-page-heading">
-        <div><span class="eyebrow">LIFE, ALL IN ONE PLACE</span><h1>The family calendar<span class="teal-text">.</span></h1><p class="muted">Shower times, shared plans, and a little room between them.</p></div>
+        <div><h1>Calendar</h1><p class="muted">Shower reservations and family events.</p></div>
         @can('admin')<button class="button button-primary" wire:click="newEvent" wire:offline.attr="disabled" @disabled(!$google->configured())><x-icon name="plus" size="18"/> Family event</button>@endcan
     </div>
     <x-feedback :notice="$notice"/>

@@ -6,7 +6,7 @@ Built with **Laravel 12, PHP 8.3+, Livewire 3, Tailwind CSS 4, and SQLite**. MyS
 
 ## Start locally
 
-PHP needs PDO SQLite (or PDO MySQL), mbstring, XML, OpenSSL, cURL, fileinfo, intl, and bcmath. Node 22+ and Composer 2 are recommended. GD is needed only to regenerate the included PNG app icons.
+PHP needs PDO SQLite (or PDO MySQL), mbstring, XML, OpenSSL, cURL, fileinfo, intl, and bcmath. Node 22+ and Composer 2 are recommended. GD is required for profile photo processing and for regenerating the included PNG app icons.
 
 ```sh
 composer install
@@ -49,6 +49,8 @@ This generates another one-time password, revokes that member’s sessions and p
 | Recurring times | Parent-only weekly patterns for any member. Create, edit, or remove patterns. Generate 30 days ahead and report skipped conflicts without replacing existing reservations. |
 | Fairness | Optional weekly cap on bookings before 9 AM, Monday–Sunday. Disabled initially. Valid swaps and explicit parent overrides bypass this cap. |
 | Timer | Start during a reservation, synchronized server-based countdown, finish early, parent stop. A late start still ends at the reserved end time. |
+| Profiles | Dedicated Profile screen with editable first name, optional nickname and last name, a live display-name preview, photos, and links to account settings. Names display as First “Nickname” Last inside household views. The existing sign-in name stays unchanged. |
+| Profile photos | Profile → Your profile photo offers a camera picker and a photo-library picker, preview, save, cancel, and remove. Photos are resized in the browser and re-encoded to 512 × 512 JPEGs on the server. Images are stored privately and served only to authenticated, active household members; initials remain the fallback. |
 | Notifications | Account preferences and household defaults, an in-app inbox, optional queued Web Push, upcoming reminder (5 minutes by default), and next-turn notification. |
 | PWA | Manifest, included 192/512 PNG icons, standalone mode, static-asset caching, offline fallback, explicit push permission, and light/dark appearance. |
 | Parent dashboard | Hours, duration, timezone, notifications, attendance, recurrences, conflicts, swaps, account access, and reservation history with day filtering. |
@@ -100,3 +102,18 @@ Tests use a separate in-memory SQLite database by default and never seed the rea
 The GitHub Actions workflow runs application tests on PHP 8.3 against SQLite and MySQL 8.4. Local validation in this workspace used PHP 8.5/SQLite; MySQL CI must run on your repository before treating that backend as verified. Real iOS/Android installation and delivery also need device testing on your HTTPS deployment. Browser QA used a separate ignored `.preview` database; it contains demonstration bookings, not your production schedule.
 
 See [deployment instructions](docs/DEPLOYMENT.md) for HTTPS, MySQL, workers, backups, and updates. Laravel’s [deployment guidance](https://laravel.com/docs/12.x/deployment) and [Livewire security guidance](https://livewire.laravel.com/docs/3.x/security) describe the framework conventions used here.
+
+Profile photos use `storage/app/private/profile-photos` on the local disk. Include that directory with database backups. Apply migrations when updating an existing installation. The phone picker accepts photos up to 20 MB and resizes them before upload, keeping the server upload below the default 2 MB PHP limit. JPG, PNG and WebP work across supported browsers; HEIC is converted when the browser can decode it (otherwise the picker asks for a JPG/PNG/WebP copy). Native camera capture depends on the phone/browser; desktop browsers use a file picker.
+
+
+### UI conventions
+
+- Use the shared `app-navigation` component for sidebar and secondary mobile destinations. Group daily plans, household tools, and personal account pages; show household management only to parents.
+- Keep Schedule, Calendar, Swaps, and Inbox directly accessible on phones. Menu contains Members, Profile, Settings, and parent management. Use the same labels and destinations at every screen size.
+- Give each page a descriptive heading that matches its navigation label. Mark only the actual current destination with `aria-current="page"`; do not select Profile while showing Settings.
+- Use semantic navigation lists, visible keyboard focus, and text labels alongside icons. Active links also use a border and heavier text, so color is not the only cue.
+- Aim for at least 44-pixel controls and keep narrow-screen forms within the viewport. Tables may scroll inside their own container.
+- Reuse avatar, feedback, and status components. Keep status text visible, provide success/error feedback, and preserve unsaved work during related actions.
+- Check new screens at 320-pixel phone width and desktop sizes, with keyboard navigation, long names, both appearance modes, and both permission levels.
+
+References: [NN/g menu-design checklist](https://www.nngroup.com/articles/menu-design/), [W3C menu structure](https://www.w3.org/WAI/tutorials/menus/structure/), and [WCAG 2.2 target-size guidance](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html). These conventions guide implementation; they are not a claim of a complete accessibility conformance audit.

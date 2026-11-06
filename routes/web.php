@@ -9,11 +9,14 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:20,1');
 });
 Route::middleware(['auth', 'household'])->group(function () {
+    Route::get('/members/{user}/photo', \App\Http\Controllers\ProfilePhotoController::class)->name('profile-photo');
     Route::get('/', \App\Livewire\Schedule::class)->name('schedule');
     Route::get('/calendar', \App\Livewire\Calendar::class)->name('calendar');
     Route::get('/swaps', \App\Livewire\Swaps::class)->name('swaps');
     Route::get('/inbox', \App\Livewire\Inbox::class)->name('inbox');
     Route::get('/preferences', \App\Livewire\Preferences::class)->name('preferences');
+    Route::view('/menu', 'menu')->name('menu');
+    Route::get('/profile', \App\Livewire\Profile::class)->name('profile');
     Route::get('/household', \App\Livewire\HouseholdAdmin::class)->middleware('can:admin')->name('household');
     Route::get('/password', [AuthController::class, 'password'])->name('password.edit');
     Route::put('/password', [AuthController::class, 'updatePassword'])->middleware('throttle:5,1')->name('password.update');

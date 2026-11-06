@@ -48,8 +48,33 @@ class AccessAndUiTest extends TestCase
     public function test_all_signed_in_screens_render_for_a_parent(): void
     {
         $this->actingAs(User::factory()->create(['is_admin' => true]));
-        foreach (['/', '/?viewMode=week', '/swaps', '/inbox', '/preferences', '/household', '/password'] as $url) $this->get($url)->assertOk();
+        foreach (['/', '/?viewMode=week', '/swaps', '/inbox', '/menu', '/profile', '/preferences', '/household', '/password'] as $url) $this->get($url)->assertOk();
     }
+    public function test_navigation_groups_are_consistent_and_parent_tools_remain_restricted(): void
+    {
+        $this->get('/menu')->assertRedirect('/login');
+        $this->actingAs(User::factory()->create());
+        $this->get('/menu')->assertOk()->assertSee('Daily plans')->assertSee('Your account')
+            ->assertSee('Members')->assertDontSee('Manage household');
+        $this->actingAs(User::factory()->create(['is_admin' => true]));
+        $this->get('/menu')->assertOk()->assertSee('Manage household');
+    }
+
+    public function test_sidebar_marks_the_actual_page_and_mobile_does_not_call_settings_profile(): void
+    {
+        $this->actingAs(User::factory()->create(['is_admin' => true]));
+        foreach (['/preferences' => 'Settings', '/profile' => 'Profile', '/household' => 'Manage household', '/inbox' => 'Inbox'] as $url => $label) {
+            $html = $this->get($url)->assertOk()->getContent();
+            $document = new \DOMDocument();
+            @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
+            $xpath = new \DOMXPath($document);
+            $active = $xpath->query('//nav[@aria-label="Main navigation"]//a[@aria-current="page"]');
+            $this->assertCount(1, $active);
+            $this->assertStringContainsString($label, $active->item(0)->textContent);
+            $this->assertSame(0, $xpath->query('//nav[@aria-label="Mobile navigation"]//a[@aria-current="page" and contains(@href,"/profile")]')->length);
+        }
+    }
+
     public function test_livewire_booking_and_move_updates_shared_database(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-11-09T10:00:00Z')); $user = User::factory()->create();
@@ -60,6 +85,21 @@ class AccessAndUiTest extends TestCase
     {
         $this->travelTo(CarbonImmutable::parse('2026-11-09T10:00:00Z')); $a = User::factory()->create(); $b = User::factory()->create();
         Livewire::actingAs($a)->test(Schedule::class)->set('ownerId', $b->id)->call('book', '2026-11-09T11:00:00Z')->assertForbidden();
+    }
+    public function test_status_card_tracks_reserved_running_and_free_while_viewing_another_day(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-09T10:00:00Z'));
+        $user = User::factory()->create(['name' => 'Liam']);
+        $bookings = app(\App\Services\BookingService::class);
+        $reservation = $bookings->book($user, $user->id, '2026-11-09T11:00:00Z');
+        $this->travelTo(CarbonImmutable::parse('2026-11-09T11:05:00Z'));
+
+        $screen = Livewire::actingAs($user)->test(Schedule::class, ['day' => '2026-11-10'])
+            ->assertSee('Shower reserved')->assertSee('Reserved for Liam');
+        $bookings->start($user, $reservation->id);
+        $screen->call('$refresh')->assertSee('Shower in use')->assertSee('Liam is showering');
+        $bookings->finish($user, $reservation->id);
+        $screen->call('$refresh')->assertSee('Shower is free')->assertDontSee('Shower in use');
     }
     public function test_parent_can_save_household_settings(): void
     {

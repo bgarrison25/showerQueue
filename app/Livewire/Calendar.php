@@ -173,7 +173,7 @@ class Calendar extends Component
         foreach ($showers as $reservation) {
             $conflicts = in_array($reservation->status, ['booked', 'running']) ? app(CalendarAvailability::class)->conflicts($events, $reservation->starts_at, $reservation->ends_at) : [];
             $items[] = ['key' => 'shower-'.$reservation->id, 'kind' => 'shower', 'id' => $reservation->id,
-                'title' => $reservation->user->name.' · Shower', 'start' => $reservation->starts_at->setTimezone($settings->timezone), 'end' => $reservation->ends_at->setTimezone($settings->timezone),
+                'title' => $reservation->user->display_name.' · Shower', 'start' => $reservation->starts_at->setTimezone($settings->timezone), 'end' => $reservation->ends_at->setTimezone($settings->timezone),
                 'allDay' => false, 'location' => '', 'description' => '', 'blocks' => false, 'editable' => false,
                 'overlaps' => array_map(fn ($event) => strip_tags($event['summary'] ?? 'Family event'), $conflicts),
             ];
@@ -186,6 +186,6 @@ class Calendar extends Component
         }
         $agenda = $items->filter(fn ($event) => $event['start']->lt($selected->addDay()) && $event['end']->gt($selected));
         $lastSync = Cache::get('google-calendar:last-sync:'.$google->calendarKey());
-        return view('livewire.calendar', compact('settings', 'google', 'selected', 'days', 'agenda', 'calendarError', 'lastSync'))->layout('layouts.app', ['title' => 'Family calendar']);
+        return view('livewire.calendar', compact('settings', 'google', 'selected', 'days', 'agenda', 'calendarError', 'lastSync'))->layout('layouts.app', ['title' => 'Calendar']);
     }
 }

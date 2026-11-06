@@ -1,6 +1,6 @@
 @extends('layouts.app', ['title' => 'Sign in'])
 @section('content')
-<section class="auth-card"><span class="eyebrow">WELCOME HOME</span><h1>A smoother day<br>starts here.</h1><p class="muted">Choose your name and sign in to find your time.</p>
+<section class="auth-card"><h1>Sign in</h1><p class="muted">Choose your name and sign in to find your time.</p>
 @if($members->isEmpty())<div class="notice">Your household is ready to be set up. Ask a parent to run <code>php artisan showerqueue:setup</code> on the server, then sign in with the generated credentials.</div>
 @else
 <form method="POST" action="/login" class="form-stack">@csrf
