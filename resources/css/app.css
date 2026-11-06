@@ -42,3 +42,5 @@
 @media(max-width:650px){.selected-day-event-list{grid-template-columns:1fr}.selected-day-heading h2{font-size:20px}.selected-day-agenda,.family-event-form{scroll-margin-top:85px}.selected-day-heading{margin-bottom:12px}}
 
 .swap-feedback{font-size:12px;padding:10px 12px;margin:6px 0 12px;border-radius:8px;background:var(--teal-light);color:var(--teal)}.swap-feedback.error-notice{background:#b7605815;color:#b76058}.swap-feedback .text-button{font-size:12px}
+
+a.inbox-item{color:inherit;text-decoration:none;border-radius:8px}a.inbox-item:hover,a.inbox-item:focus-visible{background:var(--surface-soft)}a.inbox-item:focus-visible{outline:2px solid var(--teal);outline-offset:4px}.inbox-item>div{min-width:0;flex:1;overflow-wrap:anywhere}.inbox-arrow{align-self:center;color:var(--teal);flex-shrink:0}.swap-card{scroll-margin-top:90px}.swap-card:target{outline:2px solid var(--teal);outline-offset:4px}

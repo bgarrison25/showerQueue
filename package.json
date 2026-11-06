@@ -2,6 +2,7 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "test": "node --test tests/Browser/*.test.cjs",
         "build": "vite build",
         "dev": "vite"
     },

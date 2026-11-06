@@ -356,9 +356,10 @@ class GoogleCalendarTest extends TestCase
             $notification = $user->notifications()->sole();
             $this->assertSame('family_event', $notification->data['kind']);
             $this->assertSame('New family event: School run', $notification->data['title']);
-            $this->assertSame('/calendar', $notification->data['url']);
+            $this->assertSame('/calendar?day=2026-11-09#selected-day-events', $notification->data['url']);
+            $this->assertSame('2026-11-09', $notification->data['day']);
             $this->assertStringContainsString('Mon, Nov 9 · 6:05 AM', $notification->data['body']);
-            Queue::assertPushed(SendPush::class, fn ($job) => $job->userId === $user->id && $job->kind === 'family_event');
+            Queue::assertPushed(SendPush::class, fn ($job) => $job->userId === $user->id && $job->kind === 'family_event' && $job->day === '2026-11-09');
         }
         $this->assertSame(0, $paused->notifications()->count());
         Queue::assertPushed(SendPush::class, 2);

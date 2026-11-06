@@ -35,6 +35,6 @@ jobs:
           cache: npm
       - run: composer install --no-interaction --prefer-dist
       - run: cp .env.example .env && php artisan key:generate
-      - run: npm ci && npm run build
+      - run: npm ci && npm test && npm run build
       - run: php artisan test --compact
       - run: composer audit --locked

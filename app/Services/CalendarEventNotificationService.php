@@ -32,12 +32,12 @@ class CalendarEventNotificationService
             $when = $allDay ? $this->allDayLabel($start, $end) : $start->format('D, M j · g:i A').' – '.$end->format($end->isSameDay($start) ? 'g:i A T' : 'D, M j · g:i A T');
             $body = (!empty($event['recurringEventId']) ? 'Repeats · next: ' : '').$when;
             if (!empty($event['location'])) $body .= ' · '.mb_substr(strip_tags($event['location']), 0, 150);
-            $inserted = DB::transaction(function () use ($calendarKey, $eventKey, $title, $body) {
+            $inserted = DB::transaction(function () use ($calendarKey, $eventKey, $title, $body, $start) {
                 $inserted = DB::table('calendar_announcements')->insertOrIgnore([
                     'calendar_key' => $calendarKey, 'event_key' => $eventKey, 'created_at' => now(), 'updated_at' => now(),
                 ]);
                 if (!$inserted) return false;
-                $this->notifications->household('family_event', 'New family event: '.$title, $body, "family-event:$calendarKey:$eventKey");
+                $this->notifications->household('family_event', 'New family event: '.$title, $body, "family-event:$calendarKey:$eventKey", $start->toDateString());
                 return true;
             }, 5);
             if ($inserted) $announced++;

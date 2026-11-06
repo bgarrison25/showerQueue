@@ -11,8 +11,15 @@ self.addEventListener('fetch', event => {
         event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => { if (response.ok) { const copy = response.clone(); caches.open(CACHE).then(cache => cache.put(request, copy)); } return response; })));
     }
 });
+function notificationUrl(value) {
+    try {
+        const url = new URL(value, self.location.origin);
+        if (url.origin === self.location.origin && ['/', '/swaps', '/calendar', '/inbox'].includes(url.pathname)) return url.pathname + url.search + url.hash;
+    } catch {}
+    return '/inbox';
+}
 self.addEventListener('push', event => {
     let payload; try { payload = event.data.json(); } catch { payload = {}; }
-    event.waitUntil(self.registration.showNotification(payload.title || 'ShowerQueue', { body: payload.body || 'There’s a household update in your inbox.', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: payload.tag || 'showerqueue-update', data: { url: '/inbox' } }));
+    event.waitUntil(self.registration.showNotification(payload?.title || 'ShowerQueue', { body: payload?.body || 'There’s a household update in your inbox.', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: payload?.tag || 'showerqueue-update', data: { url: notificationUrl(payload?.data?.url) } }));
 });
-self.addEventListener('notificationclick', event => { event.notification.close(); event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async clients => { const client = clients.find(client => new URL(client.url).origin === self.location.origin); if (client) { await client.navigate('/inbox'); return client.focus(); } return self.clients.openWindow('/inbox'); })); });
+self.addEventListener('notificationclick', event => { event.notification.close(); const url = notificationUrl(event.notification.data?.url); event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async clients => { const client = clients.find(client => new URL(client.url).origin === self.location.origin); if (client) { await client.navigate(url); return client.focus(); } return self.clients.openWindow(url); })); });
