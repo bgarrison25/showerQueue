@@ -167,7 +167,6 @@ button:disabled { opacity: .65; }
 .today-button { font-size: 14px; }
 .slot-label { font-size: 12px; }
 .week-strip { background: var(--surface); padding: 6px; border: 1px solid var(--border); border-radius: 14px; margin-bottom: 12px; }
-.week-strip.day-view-strip { display: none; }
 .week-strip button>span { font-size: 12px; }
 .week-strip button.selected, .week-strip button.selected>span { color: var(--on-accent); }
 .admin-booking { padding: 12px 0; gap: 10px; border-bottom: 0; }
