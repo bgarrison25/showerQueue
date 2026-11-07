@@ -27,7 +27,7 @@
         </div>
     </aside>
     <div class="main-column">
-        <header class="topbar"><a class="mobile-brand" href="/"><span class="brand-mark"><x-icon name="drop"/></span><span><strong>ShowerQueue</strong></span></a><div class="topbar-right"><span class="sync-label"><i></i> Shared household</span><livewire:notification-link placement="header" key="notification-header"/><button class="icon-button mobile-only" type="button" data-theme-toggle aria-label="Change appearance"><x-icon name="sun"/></button></div></header>
+        <header class="topbar"><a class="mobile-brand" href="/"><span class="brand-mark"><x-icon name="drop"/></span><span><strong>ShowerQueue</strong></span></a><div class="topbar-right"><span class="sync-label"><i></i> Shared household</span><livewire:notification-link placement="header" key="notification-header"/><button class="icon-button" type="button" data-theme-toggle aria-label="Switch light or dark theme" title="Switch light or dark theme"><x-icon name="sun"/></button></div></header>
         <main id="main" class="page-content" tabindex="-1">
             @if(request()->routeIs('profile', 'preferences', 'household', 'password.edit'))
                 <a class="mobile-menu-back" href="{{ route('menu') }}"><x-icon name="chevron-left" size="18"/> Menu</a>
