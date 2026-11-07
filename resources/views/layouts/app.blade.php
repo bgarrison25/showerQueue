@@ -22,8 +22,10 @@
         </div>
         <x-app-navigation context="sidebar"/>
         <div class="sidebar-bottom">
-            <div class="profile"><livewire:profile-link key="sidebar-profile"/></div>
-            <form method="POST" action="{{ route('logout') }}">@csrf<button class="sidebar-signout" type="submit"><x-icon name="logout" size="19"/> Sign out</button></form>
+            <div class="profile">
+                <livewire:profile-link key="sidebar-profile"/>
+                <form method="POST" action="{{ route('logout') }}">@csrf<button class="icon-button" type="submit" aria-label="Sign out" title="Sign out"><x-icon name="logout" size="19"/></button></form>
+            </div>
         </div>
     </aside>
     <div class="main-column">
