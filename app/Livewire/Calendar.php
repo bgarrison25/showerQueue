@@ -151,8 +151,8 @@ class Calendar extends Component
         $settings = HouseholdSetting::current();
         $google = app(GoogleCalendar::class);
         $selected = CarbonImmutable::parse($this->day, $settings->timezone);
-        $first = $selected->startOfMonth()->startOfWeek();
-        $end = $selected->endOfMonth()->endOfWeek()->addDay()->startOfDay();
+        $first = $selected->startOfMonth()->startOfWeek(CarbonImmutable::SUNDAY);
+        $end = $selected->endOfMonth()->endOfWeek(CarbonImmutable::SATURDAY)->addDay()->startOfDay();
         $events = []; $calendarError = '';
         try { $events = $google->events($first, $end); }
         catch (CalendarException $e) { $calendarError = $e->getMessage(); }

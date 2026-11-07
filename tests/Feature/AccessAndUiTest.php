@@ -45,6 +45,18 @@ class AccessAndUiTest extends TestCase
         $this->get('/')->assertOk()->assertSee('Main navigation');
     }
 
+    public function test_calendar_and_schedule_weeks_start_on_sunday(): void
+    {
+        config(['google-calendar.id' => '', 'google-calendar.credentials' => '']);
+        $member = User::factory()->create();
+        foreach (['2026-11-06' => ['2026-11-01', '2026-12-05'], '2026-08-15' => ['2026-07-26', '2026-09-05']] as $day => [$first, $last]) {
+            Livewire::actingAs($member)->test(\App\Livewire\Calendar::class, ['day' => $day])
+                ->assertViewHas('days', fn ($days) => $days[0]['date']->toDateString() === $first && end($days)['date']->toDateString() === $last && count($days) % 7 === 0);
+        }
+        Livewire::actingAs($member)->test(Schedule::class, ['day' => '2026-11-08'])
+            ->assertViewHas('week', fn ($week) => $week->first()['date']->toDateString() === '2026-11-08' && $week->last()['date']->toDateString() === '2026-11-14');
+    }
+
     public function test_login_is_rate_limited(): void
     {
         for ($i = 0; $i < 5; $i++) $this->post('/login', ['name' => 'Nobody', 'password' => 'incorrect'])->assertSessionHasErrors();

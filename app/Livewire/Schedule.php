@@ -114,7 +114,7 @@ class Schedule extends Component
         if (!$this->expandedSlots) $rows = $rows->take(12);
         $current = Reservation::active()->with('user')->whereIn('status', ['booked', 'running'])->where('starts_at', '<=', now())->where('ends_at', '>', now())->first();
         $week = collect(range(0, 6))->map(function ($offset) {
-            $date = CarbonImmutable::parse($this->day)->startOfWeek()->addDays($offset);
+            $date = CarbonImmutable::parse($this->day)->startOfWeek(CarbonImmutable::SUNDAY)->addDays($offset);
             return ['date' => $date, 'bookings' => Reservation::active()->with('user')->where('day', $date->toDateString())->orderBy('starts_at')->get()];
         });
         return view('livewire.schedule', compact('settings', 'today', 'members', 'attendance', 'bookings', 'mine', 'pendingSwaps', 'rows', 'totalSlots', 'nextAvailable', 'current', 'week', 'calendarError', 'blocksBusy'))->layout('layouts.app', ['title' => 'Schedule']);

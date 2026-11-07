@@ -17,7 +17,7 @@
         <section class="panel family-month-panel" aria-label="Month calendar">
             <div class="calendar-heading"><h2>{{ $selected->format('F Y') }}</h2><div class="date-controls"><button class="icon-button bordered" wire:click="navigate(-1)" aria-label="Previous month"><x-icon name="chevron-left" size="18"/></button><button class="text-button" wire:click="today">Today</button><button class="icon-button bordered" wire:click="navigate(1)" aria-label="Next month"><x-icon name="chevron-right" size="18"/></button></div></div>
             <div class="family-calendar-legend"><span><i class="family-event-dot"></i> Family plans</span><span><i class="shower-event-dot"></i> Shower times</span></div>
-            <div class="family-weekdays" aria-hidden="true">@foreach(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] as $weekday)<span>{{ $weekday }}</span>@endforeach</div>
+            <div class="family-weekdays" aria-hidden="true">@foreach(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] as $weekday)<span>{{ $weekday }}</span>@endforeach</div>
             <div class="family-month-grid">
                 @foreach($days as $entry)
                     <button type="button" wire:key="calendar-day-{{ $entry['date']->toDateString() }}" wire:click="selectDay('{{ $entry['date']->toDateString() }}')" class="family-day {{ $entry['date']->month !== $selected->month ? 'outside-month' : '' }} {{ $entry['date']->toDateString() === $day ? 'selected' : '' }} {{ $entry['date']->isToday() ? 'is-today' : '' }}" aria-pressed="{{ $entry['date']->toDateString() === $day ? 'true' : 'false' }}" aria-label="{{ $entry['date']->format('l, F j') }}: {{ $entry['familyCount'] }} family events, {{ $entry['showerCount'] }} showers">
