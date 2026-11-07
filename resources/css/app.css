@@ -529,3 +529,14 @@ body { background-image: radial-gradient(ellipse at 95% 0%, color-mix(in srgb, v
 .topbar { justify-content: flex-end; }
 .sidebar-brand-panel { min-height: 100px; }
 @media(max-width:800px) { .topbar { justify-content: space-between; } }
+
+.household-members-panel { margin-bottom: 24px; }
+.member-management-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.member-management-card { min-width: 0; padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-soft); }
+.member-management-summary { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.member-management-summary>div { min-width: 0; }
+.member-management-summary h3 { margin: 0; overflow-wrap: anywhere; }
+.member-management-card>p { overflow-wrap: anywhere; }
+.member-profile-form { margin-top: 16px; }
+.member-management-card:has(.member-profile-form) { grid-column: 1 / -1; background: var(--surface); }
+@media(max-width:650px) { .member-management-grid { grid-template-columns: minmax(0, 1fr); } }

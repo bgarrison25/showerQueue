@@ -11,13 +11,14 @@
         </ul>
     </section>
     @endif
+    @can('admin')
     <section class="nav-group" aria-labelledby="{{ $context }}-household">
         <h2 id="{{ $context }}-household">Household</h2>
         <ul>
-            <li><a href="{{ route('schedule') }}#household-members"><x-icon name="users"/><span>Members</span></a></li>
             @can('admin')<li><a href="{{ route('household') }}" class="{{ request()->routeIs('household') ? 'active' : '' }}" @if(request()->routeIs('household')) aria-current="page" @endif><x-icon name="settings"/><span>Manage household</span></a></li>@endcan
         </ul>
     </section>
+    @endcan
     <section class="nav-group" aria-labelledby="{{ $context }}-account">
         <h2 id="{{ $context }}-account">Your account</h2>
         <ul>

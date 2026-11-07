@@ -18,6 +18,9 @@ use Livewire\Component;
 
 class HouseholdAdmin extends Component
 {
+    #[\Livewire\Attributes\Locked]
+    public ?int $editingMemberId = null;
+    public array $memberProfile = ['first_name' => '', 'last_name' => '', 'nickname' => '', 'color' => 'teal'];
     public array $settings = [];
     public array $attendance = ['user_id' => '', 'day' => '', 'is_home' => true, 'note' => ''];
     public array $pattern = ['user_id' => '', 'weekdays' => [1, 2], 'time' => '07:00', 'starts_on' => '', 'ends_on' => null];
@@ -42,6 +45,38 @@ class HouseholdAdmin extends Component
         $this->settings['notification_defaults'] = array_replace(array_fill_keys(array_keys(NotificationService::TYPES), true), $this->settings['notification_defaults'] ?? []);
         $this->attendance['day'] = $this->pattern['starts_on'] = app(SlotService::class)->today();
         $this->attendance['user_id'] = $this->pattern['user_id'] = auth()->id();
+    }
+
+    public function editMember(int $id): void
+    {
+        $member = User::findOrFail($id);
+        $this->editingMemberId = $id;
+        $this->memberProfile = ['first_name' => $member->profileFirstName(), 'last_name' => $member->profileLastName(), 'nickname' => $member->nickname ?? '', 'color' => $member->color];
+        $this->resetErrorBag();
+    }
+
+    public function cancelMemberEdit(): void
+    {
+        $this->editingMemberId = null;
+        $this->resetErrorBag();
+    }
+
+    public function saveMember(): void
+    {
+        abort_unless($this->editingMemberId, 422);
+        $plain = 'not_regex:/[\x00-\x1F\x7F<>]/u';
+        $data = $this->validate([
+            'memberProfile.first_name' => ['required', 'string', 'max:60', $plain],
+            'memberProfile.last_name' => ['nullable', 'string', 'max:80', $plain],
+            'memberProfile.nickname' => ['nullable', 'string', 'max:30', $plain],
+            'memberProfile.color' => ['required', Rule::in(['teal', 'rose', 'blue', 'amber', 'violet', 'pink'])],
+        ])['memberProfile'];
+        foreach (['first_name', 'last_name', 'nickname'] as $field) $data[$field] = preg_replace('/\s+/u', ' ', trim($data[$field] ?? ''));
+        $data['nickname'] = $data['nickname'] ?: null;
+        User::findOrFail($this->editingMemberId)->forceFill(collect($data)->only(['first_name', 'last_name', 'nickname', 'color'])->all())->save();
+        $this->editingMemberId = null;
+        $this->notice = 'Member profile saved. Their sign-in name and reservations are unchanged.';
+        $this->dispatch('profile-updated');
     }
 
     public function saveSettings(): void

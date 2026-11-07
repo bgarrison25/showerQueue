@@ -57,6 +57,24 @@ class AccessAndUiTest extends TestCase
             ->assertViewHas('week', fn ($week) => $week->first()['date']->toDateString() === '2026-11-08' && $week->last()['date']->toDateString() === '2026-11-14');
     }
 
+    public function test_parent_can_edit_member_profile_without_changing_access_or_login(): void
+    {
+        $parent = User::factory()->create(['is_admin' => true]);
+        $member = User::factory()->create(['name' => 'Liam']);
+        Livewire::actingAs($parent)->test(HouseholdAdmin::class)->call('editMember', $member->id)
+            ->set('memberProfile.first_name', 'Liam')->set('memberProfile.last_name', 'Garrison')
+            ->set('memberProfile.nickname', 'Dash')->set('memberProfile.color', 'blue')
+            ->set('memberProfile.is_admin', true)->call('saveMember')->assertHasNoErrors();
+        $saved = $member->fresh();
+        $this->assertSame('Liam “Dash” Garrison', $saved->display_name);
+        $this->assertSame('Liam', $saved->name);
+        $this->assertSame('blue', $saved->color);
+        $this->assertFalse($saved->is_admin);
+        Livewire::actingAs($parent)->test(HouseholdAdmin::class)->call('editMember', $member->id)
+            ->set('memberProfile.color', 'invalid')->call('saveMember')->assertHasErrors('memberProfile.color');
+        $this->assertSame('blue', $member->fresh()->color);
+    }
+
     public function test_login_is_rate_limited(): void
     {
         for ($i = 0; $i < 5; $i++) $this->post('/login', ['name' => 'Nobody', 'password' => 'incorrect'])->assertSessionHasErrors();
@@ -81,7 +99,7 @@ class AccessAndUiTest extends TestCase
         $this->get('/menu')->assertRedirect('/login');
         $this->actingAs(User::factory()->create());
         $this->get('/menu')->assertOk()->assertSee('Daily plans')->assertSee('Your account')
-            ->assertSee('Members')->assertDontSee('Manage household');
+            ->assertDontSee('#household-members')->assertDontSee('Manage household');
         $this->actingAs(User::factory()->create(['is_admin' => true]));
         $this->get('/menu')->assertOk()->assertSee('Manage household');
     }
