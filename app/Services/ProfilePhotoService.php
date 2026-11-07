@@ -38,23 +38,23 @@ class ProfilePhotoService
         imagejpeg($square, null, 88);
         $contents = ob_get_clean();
         $path = 'profile-photos/'.Str::uuid().'.jpg';
-        if (!Storage::disk('local')->put($path, $contents)) {
+        if (!Storage::disk()->put($path, $contents)) {
             throw ValidationException::withMessages(['photo' => 'Your photo could not be saved. Please try again.']);
         }
 
         try {
             $previous = $this->replacePath($user, $path);
         } catch (\Throwable $e) {
-            Storage::disk('local')->delete($path);
+            Storage::disk()->delete($path);
             throw $e;
         }
-        if ($previous) Storage::disk('local')->delete($previous);
+        if ($previous) Storage::disk()->delete($previous);
     }
 
     public function remove(User $user): void
     {
         $previous = $this->replacePath($user, null);
-        if ($previous) Storage::disk('local')->delete($previous);
+        if ($previous) Storage::disk()->delete($previous);
     }
 
     private function replacePath(User $user, ?string $path): ?string

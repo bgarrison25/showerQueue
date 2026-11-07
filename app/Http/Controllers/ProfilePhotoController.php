@@ -10,7 +10,7 @@ class ProfilePhotoController extends Controller
     public function __invoke(User $user)
     {
         abort_unless($user->is_active && $user->profile_photo_path, 404);
-        $disk = Storage::disk('local');
+        $disk = Storage::disk();
         abort_unless($disk->exists($user->profile_photo_path), 404);
 
         return $disk->response($user->profile_photo_path, null, [

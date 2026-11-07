@@ -1,6 +1,16 @@
 # Deploying ShowerQueue
 
-## Host and environment
+## Laravel Cloud (live deployment)
+
+ShowerQueue is deployed on Laravel Cloud. Its application filesystem is ephemeral and resets on deployment; never use the local disk for persistent uploads.
+
+In the live environment infrastructure canvas, attach a **private Laravel Object Storage bucket** and mark it as the **default filesystem disk**, then redeploy. Cloud injects the disk configuration and `FILESYSTEM_DISK`; remove any custom override forcing it to `local`. The S3 Flysystem adapter is included in Composer dependencies. Profile photos use the default disk for saving, reading, replacement, and deletion, and are served through the authenticated photo route. Do not make this bucket public.
+
+Existing local uploads are not automatically copied to the bucket. Recover from a backup if available or re-upload missing photos after attaching the bucket. Keep the bucket attached across releases. Livewire temporary uploads also default to the configured filesystem when no temporary-upload disk override is set.
+
+References: https://laravel.com/cloud/docs/environments#filesystem and https://laravel.com/cloud/docs/resources/object-storage
+
+## Self-hosted alternative: host and environment
 
 Deploy on a conventional PHP 8.3+ server (Laravel Forge, a VPS with Nginx/PHP-FPM, or an equivalent Laravel host). This application needs persistent disk for SQLite, a queue worker, and a scheduler. It cannot run as a static site or directly in Cloudflare Workers. A LAN-only hostname must still offer trusted HTTPS for phone PWA push.
 

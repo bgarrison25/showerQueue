@@ -41,6 +41,23 @@ class ProfilePhotoTest extends TestCase
         $this->get('/')->assertSee($member->profilePhotoUrl(), false);
     }
 
+    public function test_photos_use_the_configured_cloud_disk_for_save_read_and_delete(): void
+    {
+        config(['filesystems.default' => 'cloud-photos']);
+        Storage::fake('cloud-photos');
+        $member = User::factory()->create();
+        $service = app(ProfilePhotoService::class);
+        $service->save($member, UploadedFile::fake()->image('photo.jpg', 100, 100));
+        $saved = $member->fresh();
+        Storage::disk('cloud-photos')->assertExists($saved->profile_photo_path);
+        Storage::disk('local')->assertMissing($saved->profile_photo_path);
+        // A fresh request can read the saved image without any local photo file.
+        $this->actingAs($saved)->get($saved->profilePhotoUrl())->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+        $service->remove($saved);
+        Storage::disk('cloud-photos')->assertMissing($saved->profile_photo_path);
+        $this->assertNull($member->fresh()->profile_photo_path);
+    }
+
     public function test_replacing_and_removing_a_photo_cleans_up_old_images(): void
     {
         $member = User::factory()->create();
