@@ -30,6 +30,7 @@ class ProfilePhotoTest extends TestCase
             ->call('savePhoto')->assertHasNoErrors()->assertDispatched('profile-updated')->assertDispatched('profile-photo-saved');
 
         $member->refresh();
+        $this->assertStringStartsWith('/members/', $member->profilePhotoUrl());
         $this->assertNull($other->fresh()->profile_photo_path);
         Storage::disk('local')->assertExists($member->profile_photo_path);
         $image = getimagesizefromstring(Storage::disk('local')->get($member->profile_photo_path));

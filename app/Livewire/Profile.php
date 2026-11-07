@@ -36,13 +36,16 @@ class Profile extends Component
         $this->firstName = preg_replace('/\s+/u', ' ', trim($this->firstName));
         $this->lastName = preg_replace('/\s+/u', ' ', trim($this->lastName));
         $this->nickname = preg_replace('/\s+/u', ' ', trim($this->nickname));
+        if ($this->photo) {
+            $this->savePhoto();
+        }
         // The account's sign-in name and permissions are deliberately not editable here.
         auth()->user()->forceFill([
             'first_name' => $this->firstName,
             'last_name' => $this->lastName,
             'nickname' => $this->nickname !== '' ? $this->nickname : null,
         ])->save();
-        $this->notice = 'Your profile is saved. Your household will see your updated name.';
+        $this->notice = 'Your profile is saved. Your household will see your updated name and photo.';
         $this->dispatch('profile-updated');
     }
 

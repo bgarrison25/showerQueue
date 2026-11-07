@@ -40,7 +40,7 @@ class User extends Authenticatable
     public function profilePhotoUrl(): ?string
     {
         return $this->profile_photo_path
-            ? route('profile-photo', ['user' => $this->id, 'v' => substr(hash('sha256', $this->profile_photo_path), 0, 16)])
+            ? route('profile-photo', ['user' => $this->id, 'v' => substr(hash('sha256', $this->profile_photo_path), 0, 16)], false)
             : null;
     }
 

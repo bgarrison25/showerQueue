@@ -96,15 +96,18 @@ class ProfileTest extends TestCase
         $this->assertNotNull($member->fresh()->profile_photo_path);
     }
 
-    public function test_saving_name_fields_preserves_a_pending_photo(): void
+    public function test_saving_profile_persists_the_pending_photo_across_a_fresh_request(): void
     {
         Storage::fake('local');
         $member = User::factory()->create(['name' => 'Liam']);
         Livewire::actingAs($member)->test(Profile::class)
             ->set('photo', UploadedFile::fake()->image('photo.png', 80, 80))->set('nickname', 'Dash')
             ->call('saveProfile')->assertHasNoErrors()
-            ->assertSet('photo', fn ($file) => $file instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile);
+            ->assertSet('photo', null)->assertDispatched('profile-photo-saved');
         $this->assertSame('Dash', $member->fresh()->nickname);
-        $this->assertNull($member->fresh()->profile_photo_path);
+        $saved = $member->fresh();
+        Storage::disk('local')->assertExists($saved->profile_photo_path);
+        $this->get('/profile')->assertOk()->assertSee($saved->profilePhotoUrl(), false);
+        $this->get($saved->profilePhotoUrl())->assertOk()->assertHeader('Content-Type', 'image/jpeg');
     }
 }

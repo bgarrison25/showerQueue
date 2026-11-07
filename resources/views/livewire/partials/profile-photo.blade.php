@@ -7,7 +7,7 @@
             <x-avatar :user="auth()->user()" class="profile-photo-large"/>
             <template x-if="previewUrl"><img :src="previewUrl" alt="New profile photo preview" class="photo-preview-image"></template>
         </div>
-        <div class="photo-editor-copy"><strong>{{ auth()->user()->display_name }}</strong><p class="muted small" x-text="previewUrl ? 'Preview your photo before saving.' : 'Visible only to your household.'"></p></div>
+        <div class="photo-editor-copy"><strong>{{ auth()->user()->display_name }}</strong><p class="muted small" x-text="previewUrl ? 'Not saved yet. Tap Save photo or Save profile.' : 'Visible only to your household.'"></p></div>
     </div>
     <div class="photo-picker-actions">
         <label class="button button-secondary photo-picker"><x-icon name="camera" size="19"/> Take photo
